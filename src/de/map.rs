@@ -26,7 +26,11 @@ pub(crate) struct MapAccess<'a, R: BufRead> {
 impl<'a, R: BufRead> MapAccess<'a, R> {
     /// Create a new MapAccess
     pub fn new(de: &'a mut Deserializer<R>, start: BytesStart<'static>) -> Result<Self, DeError> {
-        let position = start.attributes().position;
+        let position = if de.html {
+            start.html_attributes().position
+        } else {
+            start.attributes().position
+        };
         Ok(MapAccess {
             de,
             start,
@@ -36,7 +40,11 @@ impl<'a, R: BufRead> MapAccess<'a, R> {
     }
 
     fn next_attr(&mut self) -> Result<Option<Attribute>, DeError> {
-        let mut attributes = self.start.attributes();
+        let mut attributes = if self.de.html {
+            self.start.html_attributes()
+        } else {
+            self.start.attributes()
+        };
         attributes.position = self.position;
         let next_att = attributes.next();
         self.position = attributes.position;

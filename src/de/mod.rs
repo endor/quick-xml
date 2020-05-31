@@ -128,6 +128,7 @@ pub struct Deserializer<R: BufRead> {
     reader: Reader<R>,
     peek: Option<Event<'static>>,
     has_value_field: bool,
+    html: bool,
 }
 
 /// Deserialize a xml string
@@ -135,30 +136,42 @@ pub fn from_str<T: DeserializeOwned>(s: &str) -> Result<T, DeError> {
     from_reader(s.as_bytes())
 }
 
+/// Deserialize a html string
+pub fn from_html_str<T: DeserializeOwned>(s: &str) -> Result<T, DeError> {
+    from_reader(s.as_bytes())
+}
+
 /// Deserialize from a reader
 pub fn from_reader<R: BufRead, T: DeserializeOwned>(reader: R) -> Result<T, DeError> {
-    let mut de = Deserializer::from_reader(reader);
+    let mut de = Deserializer::from_reader(reader, false);
+    T::deserialize(&mut de)
+}
+
+/// Deserialize from a html reader
+pub fn from_html_reader<R: BufRead, T: DeserializeOwned>(reader: R) -> Result<T, DeError> {
+    let mut de = Deserializer::from_reader(reader, true);
     T::deserialize(&mut de)
 }
 
 impl<R: BufRead> Deserializer<R> {
     /// Get a new deserializer
-    pub fn new(reader: Reader<R>) -> Self {
+    pub fn new(reader: Reader<R>, html: bool) -> Self {
         Deserializer {
             reader,
             peek: None,
             has_value_field: false,
+            html,
         }
     }
 
     /// Get a new deserializer from a regular BufRead
-    pub fn from_reader(reader: R) -> Self {
+    pub fn from_reader(reader: R, html: bool) -> Self {
         let mut reader = Reader::from_reader(reader);
         reader
             .expand_empty_elements(true)
-            .check_end_names(true)
+            .check_end_names(!html)
             .trim_text(true);
-        Self::new(reader)
+        Self::new(reader, html)
     }
 
     fn peek(&mut self) -> Result<Option<&Event<'static>>, DeError> {
